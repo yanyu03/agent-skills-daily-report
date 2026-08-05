@@ -1,7 +1,7 @@
 {
   "title": "AI Agent Skills 中文观察",
   "displayTitle": "AI Agent 技能日报",
-  "subTitle": "每天自动整理高关注度 Agent Skills、MCP Server 与智能体工具项目。",
+  "subTitle": "每天整理高关注度 Agent Skills 与 MCP 项目，并提供面向小白和开发者的场景化使用建议。",
   "avatarUrl": "https://github.com/yanyu03.png",
   "faviconUrl": "https://github.com/yanyu03.png",
   "homeUrl": "https://yanyu03.github.io/agent-skills-daily-report/",
@@ -16,7 +16,7 @@
   "showPostSource": 1,
   "needComment": 0,
   "rssSplit": "sentence",
-  "bottomText": "数据来自 GitHub Search API；转载请注明来源。",
+  "bottomText": "数据来自 GitHub Search API；用途分类与使用建议用于初筛参考。",
   "allHead": "<meta name='language' content='zh-CN'><meta property='og:locale' content='zh_CN'><meta name='robots' content='index,follow'>",
   "indexStyle": "<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif}</style>",
   "style": "<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif}#postBody{line-height:1.8}</style>",
