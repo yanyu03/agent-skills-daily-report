@@ -1,5 +1,6 @@
 import os
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -25,7 +26,7 @@ def fetch_mcp_servers():
 
 
 def generate_report(items):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
     report_date = now.strftime("%Y-%m-%d")
     report_month = now.strftime("%Y-%m")
 
