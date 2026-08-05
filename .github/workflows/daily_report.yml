@@ -3,7 +3,7 @@ name: Daily AI Agent Skills Report
 on:
   schedule:
     - cron: '0 16 * * *'
-  workflow_dispatch:
+  orkflow_dispatch:
 
 jobs:
   run-agent:
