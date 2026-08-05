@@ -53,14 +53,28 @@ jobs:
 
       - name: 生成静态站点
         run: |
+          set -euo pipefail
           rsync -a --exclude='.git' --exclude='.github' ./ /opt/Gmeek/
           cd /opt/Gmeek
+
+          current_config_hash=$(sha256sum config.json | awk '{print $1}')
+          cached_config_hash=$(cat .gmeek-config.sha256 2>/dev/null || true)
+
+          if [ "${current_config_hash}" != "${cached_config_hash}" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Gmeek 配置发生变化，执行全量重建。"
+            rm -f blogBase.json
+          else
+            echo "Gmeek 配置未变化，执行增量构建。"
+          fi
+
+          echo "${current_config_hash}" > .gmeek-config.sha256
           python Gmeek.py "${{ secrets.GITHUB_TOKEN }}" "${{ github.repository }}" --issue_number "${{ github.event.issue.number }}"
 
           rm -rf "${{ github.workspace }}/docs" "${{ github.workspace }}/backup"
           cp -a /opt/Gmeek/docs "${{ github.workspace }}/docs"
           cp -a /opt/Gmeek/backup "${{ github.workspace }}/backup"
           cp /opt/Gmeek/blogBase.json "${{ github.workspace }}/blogBase.json"
+          cp /opt/Gmeek/.gmeek-config.sha256 "${{ github.workspace }}/.gmeek-config.sha256"
 
       - name: 提交生成结果
         run: |
