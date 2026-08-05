@@ -30,7 +30,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: 检查 Python 语法
-        run: python -m py_compile main.py publish_issue.py
+        run: python -m py_compile main.py publish_issue.py tests/test_recommendations.py
+
+      - name: 验证用途分类和人群建议
+        run: python -m unittest discover -s tests -v
 
       - name: 生成中文日报
         env:
