@@ -11,7 +11,7 @@
   "UTC": 8,
   "themeMode": "manual",
   "dayTheme": "light",
-  "nightTheme": "dark_colorblind",
+  "nightTheme": "dark",
   "urlMode": "issue",
   "showPostSource": 1,
   "needComment": 0,
