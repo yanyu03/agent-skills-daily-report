@@ -38,6 +38,22 @@ def ensure_label(session: requests.Session, api_base: str) -> None:
     label_url = f"{api_base}/labels/{quote(LABEL_NAME, safe='')}"
     response = session.get(label_url, timeout=30)
     if response.status_code == 200:
+        label = response.json()
+        if (
+            label.get("color", "").upper() != LABEL_COLOR
+            or label.get("description") != LABEL_DESCRIPTION
+        ):
+            api_request(
+                session,
+                "PATCH",
+                label_url,
+                json={
+                    "name": LABEL_NAME,
+                    "color": LABEL_COLOR,
+                    "description": LABEL_DESCRIPTION,
+                },
+            )
+            print(f"已更新标签样式：{LABEL_NAME}")
         return
     if response.status_code != 404:
         raise RuntimeError(
