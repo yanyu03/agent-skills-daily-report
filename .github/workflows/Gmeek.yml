@@ -18,7 +18,7 @@ jobs:
     if: ${{ github.event_name != 'issues' || github.event.repository.owner.id == github.event.sender.id }}
     permissions:
       contents: write
-      issues: read
+      issues: write
 
     steps:
       - name: 检出仓库
