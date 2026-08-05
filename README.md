@@ -1,20 +1,6 @@
-# AI Agent Skills 中文观察｜Python 源码分支
-
-本分支只保存日报采集、分析和发布所需的 Python 源码、配置、测试与 Markdown 报告。
-
-## 分支职责
-
-- `py`：Python 源码、配置、测试和 `reports/`。
-- `blog`：Gmeek 生成的静态站点、备份和 `blogBase.json`。
-- `main`：GitHub Actions 调度与分支编排。
-
-线上站点：<https://skill.250221.xyz/>
-
-主要入口：
-
-```bash
-pip install -r requirements.txt
-python -m unittest discover -s tests -v
-python main.py
-python publish_issue.py
-```
+# AI Agent Skills 中文观察 :link: https://skill.250221.xyz/ 
+### :page_facing_up: [1](https://skill.250221.xyz//tag.html) 
+### :speech_balloon: 0 
+### :hibiscus: 4293 
+### :alarm_clock: 2026-08-06 00:17:52 
+### Powered by :heart: [Gmeek](https://github.com/Meekdai/Gmeek)
