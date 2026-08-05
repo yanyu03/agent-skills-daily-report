@@ -8,12 +8,12 @@ on:
     - cron: "15 16 * * *"
 
 concurrency:
-  group: gmeek-pages
+  group: gmeek-blog-output
   cancel-in-progress: false
 
 jobs:
   build:
-    name: 生成中文博客
+    name: 从 py 构建并写入 blog
     runs-on: ubuntu-24.04
     if: ${{ github.event_name != 'issues' || github.event.issue.user.id == github.event.repository.owner.id }}
     permissions:
@@ -21,8 +21,18 @@ jobs:
       issues: write
 
     steps:
-      - name: 检出仓库
+      - name: 检出 Python 源码分支
         uses: actions/checkout@v6
+        with:
+          ref: py
+          fetch-depth: 0
+
+      - name: 检出博客产物分支
+        uses: actions/checkout@v6
+        with:
+          ref: blog
+          path: blog-site
+          fetch-depth: 0
 
       - name: 配置 Python
         uses: actions/setup-python@v6
@@ -54,9 +64,15 @@ jobs:
       - name: 生成静态站点
         run: |
           set -euo pipefail
-          rsync -a --exclude='.git' --exclude='.github' ./ /opt/Gmeek/
-          cd /opt/Gmeek
 
+          # py 分支提供源码和配置；blog 分支提供上一次构建缓存。
+          rsync -a --exclude='.git' --exclude='.github' --exclude='blog-site' ./ /opt/Gmeek/
+          [ ! -d blog-site/docs ] || cp -a blog-site/docs /opt/Gmeek/docs
+          [ ! -d blog-site/backup ] || cp -a blog-site/backup /opt/Gmeek/backup
+          [ ! -f blog-site/blogBase.json ] || cp blog-site/blogBase.json /opt/Gmeek/blogBase.json
+          [ ! -f blog-site/.gmeek-config.sha256 ] || cp blog-site/.gmeek-config.sha256 /opt/Gmeek/.gmeek-config.sha256
+
+          cd /opt/Gmeek
           current_config_hash=$(sha256sum config.json | awk '{print $1}')
           cached_config_hash=$(cat .gmeek-config.sha256 2>/dev/null || true)
 
@@ -68,22 +84,28 @@ jobs:
           fi
 
           echo "${current_config_hash}" > .gmeek-config.sha256
-          python Gmeek.py "${{ secrets.GITHUB_TOKEN }}" "${{ github.repository }}" --issue_number "${{ github.event.issue.number }}"
+          issue_number="${{ github.event.issue.number }}"
+          if [ -n "${issue_number}" ]; then
+            python Gmeek.py "${{ secrets.GITHUB_TOKEN }}" "${{ github.repository }}" --issue_number "${issue_number}"
+          else
+            python Gmeek.py "${{ secrets.GITHUB_TOKEN }}" "${{ github.repository }}"
+          fi
 
-          rm -rf "${{ github.workspace }}/docs" "${{ github.workspace }}/backup"
-          cp -a /opt/Gmeek/docs "${{ github.workspace }}/docs"
-          cp -a /opt/Gmeek/backup "${{ github.workspace }}/backup"
-          cp /opt/Gmeek/blogBase.json "${{ github.workspace }}/blogBase.json"
-          cp /opt/Gmeek/.gmeek-config.sha256 "${{ github.workspace }}/.gmeek-config.sha256"
+          # blog 分支只保留构建产物，不混入 Python 源码。
+          find "${{ github.workspace }}/blog-site" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cp -a docs "${{ github.workspace }}/blog-site/docs"
+          cp -a backup "${{ github.workspace }}/blog-site/backup"
+          cp blogBase.json "${{ github.workspace }}/blog-site/blogBase.json"
+          cp README.md "${{ github.workspace }}/blog-site/README.md"
+          cp .gmeek-config.sha256 "${{ github.workspace }}/blog-site/.gmeek-config.sha256"
+          touch "${{ github.workspace }}/blog-site/.nojekyll"
 
-      - name: 提交生成结果
+      - name: 提交生成结果到 blog 分支
+        working-directory: blog-site
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # Gmeek 除了生成 docs、backup 和 blogBase.json，
-          # 还会直接更新工作区根目录的 README.md。
-          # 暂存工作区中的全部生成结果，避免 rebase 被未暂存文件阻断。
           git add -A
           git status --short
 
@@ -91,17 +113,17 @@ jobs:
             echo "站点内容没有变化，无需提交。"
           else
             git commit -m "chore: 更新 Gmeek 中文站点 [skip ci]"
-            git pull --rebase --autostash origin main
-            git push origin HEAD:main
+            git pull --rebase --autostash origin blog
+            git push origin HEAD:blog
           fi
 
-      - name: 上传 Pages 构建产物
+      - name: 上传 GitHub Pages 构建产物
         uses: actions/upload-pages-artifact@v4
         with:
-          path: docs/.
+          path: blog-site/docs/.
 
   deploy:
-    name: 部署 GitHub Pages
+    name: 部署 GitHub Pages 备用站
     runs-on: ubuntu-24.04
     needs: build
     permissions:
