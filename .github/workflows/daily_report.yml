@@ -15,8 +15,11 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: 检出仓库
+      - name: 检出 Python 源码分支
         uses: actions/checkout@v6
+        with:
+          ref: py
+          fetch-depth: 0
 
       - name: 配置 Python
         uses: actions/setup-python@v6
@@ -47,8 +50,9 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python publish_issue.py
 
-      - name: 提交日报文件
+      - name: 提交日报到 py 分支
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add reports/
@@ -57,7 +61,8 @@ jobs:
             echo "日报文件没有变化，无需提交。"
           else
             git commit -m "docs: 发布中文 AI Agent 与 MCP 日报 [skip ci]"
-            git push origin HEAD:main
+            git pull --rebase --autostash origin py
+            git push origin HEAD:py
           fi
 
       - name: 触发 Gmeek 构建
