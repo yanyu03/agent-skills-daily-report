@@ -66,13 +66,18 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs backup blogBase.json
+
+          # Gmeek 除了生成 docs、backup 和 blogBase.json，
+          # 还会直接更新工作区根目录的 README.md。
+          # 暂存工作区中的全部生成结果，避免 rebase 被未暂存文件阻断。
+          git add -A
+          git status --short
 
           if git diff --cached --quiet; then
             echo "站点内容没有变化，无需提交。"
           else
             git commit -m "chore: 更新 Gmeek 中文站点 [skip ci]"
-            git pull --rebase origin main
+            git pull --rebase --autostash origin main
             git push origin HEAD:main
           fi
 
