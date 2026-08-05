@@ -1,6 +1,6 @@
-# AI Agent Skills 中文观察 :link: https://yanyu03.github.io/agent-skills-daily-report/ 
-### :page_facing_up: [1](https://yanyu03.github.io/agent-skills-daily-report//tag.html) 
+# AI Agent Skills 中文观察 :link: https://skill.250221.xyz/ 
+### :page_facing_up: [1](https://skill.250221.xyz//tag.html) 
 ### :speech_balloon: 0 
 ### :hibiscus: 4293 
-### :alarm_clock: 2026-08-06 00:15:33 
+### :alarm_clock: 2026-08-06 00:17:52 
 ### Powered by :heart: [Gmeek](https://github.com/Meekdai/Gmeek)
