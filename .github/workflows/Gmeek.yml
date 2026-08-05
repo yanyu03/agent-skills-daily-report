@@ -15,7 +15,7 @@ jobs:
   build:
     name: 生成中文博客
     runs-on: ubuntu-24.04
-    if: ${{ github.event_name != 'issues' || github.event.repository.owner.id == github.event.sender.id }}
+    if: ${{ github.event_name != 'issues' || github.event.issue.user.id == github.event.repository.owner.id }}
     permissions:
       contents: write
       issues: write
