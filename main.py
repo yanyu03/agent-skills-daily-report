@@ -12,7 +12,7 @@ def fetch_mcp_servers():
                 response = requests.get(url, headers=headers)
                 response.raise_for_status()
                 return response.json().get("items", [])[:10]
-except Exception as e:
+          except Exception as e:
         print(f"Error fetching data: {e}")
         return []
 
