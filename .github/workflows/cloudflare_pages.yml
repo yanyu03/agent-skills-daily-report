@@ -20,15 +20,16 @@ env:
 
 jobs:
   deploy:
-    name: 发布静态站点并绑定域名
+    name: 从 blog 分支发布静态站点
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
 
     steps:
-      - name: 检出最新站点文件
+      - name: 检出博客产物分支
         uses: actions/checkout@v6
         with:
-          ref: main
+          ref: blog
+          fetch-depth: 1
 
       - name: 检查 Cloudflare 凭据
         env:
@@ -46,7 +47,7 @@ jobs:
           set -euo pipefail
           test -f docs/index.html
           test -f docs/postList.json
-          echo "准备部署 $(find docs -type f | wc -l) 个文件。"
+          echo "准备从 blog 分支部署 $(find docs -type f | wc -l) 个文件。"
 
       - name: 部署到 Cloudflare Pages
         id: cloudflare_deploy
@@ -54,7 +55,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy docs --project-name=agent-skills-daily-report --branch=main
+          command: pages deploy docs --project-name=agent-skills-daily-report --branch=blog
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 绑定自定义域名
