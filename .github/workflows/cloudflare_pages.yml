@@ -16,6 +16,7 @@ concurrency:
 
 env:
   CF_PAGES_PROJECT: agent-skills-daily-report
+  CF_PAGES_PRODUCTION_BRANCH: blog
   CF_CUSTOM_DOMAIN: skill.250221.xyz
 
 jobs:
@@ -41,6 +42,54 @@ jobs:
             echo "::error::请在仓库 Actions secrets 中配置 CLOUDFLARE_API_TOKEN 和 CLOUDFLARE_ACCOUNT_ID。"
             exit 1
           fi
+
+      - name: 创建或校验 Cloudflare Pages 项目
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT_NAME: ${{ env.CF_PAGES_PROJECT }}
+          PRODUCTION_BRANCH: ${{ env.CF_PAGES_PRODUCTION_BRANCH }}
+        run: |
+          set -euo pipefail
+          api_base="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects"
+          project_url="${api_base}/${PROJECT_NAME}"
+          project_file="${RUNNER_TEMP}/cloudflare-pages-project.json"
+
+          http_status=$(curl --silent --show-error \
+            --output "${project_file}" \
+            --write-out "%{http_code}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "${project_url}")
+
+          case "${http_status}" in
+            200)
+              jq -e '.success == true' "${project_file}" > /dev/null
+              actual_branch=$(jq -r '.result.production_branch // ""' "${project_file}")
+              if [ "${actual_branch}" != "${PRODUCTION_BRANCH}" ]; then
+                echo "::error::Pages 项目 ${PROJECT_NAME} 的生产分支是 ${actual_branch:-未设置}，预期为 ${PRODUCTION_BRANCH}。"
+                echo "请在 Cloudflare Pages 项目设置中改为 ${PRODUCTION_BRANCH} 后重试。"
+                exit 1
+              fi
+              echo "Pages 项目 ${PROJECT_NAME} 已存在，生产分支为 ${PRODUCTION_BRANCH}。"
+              ;;
+            404)
+              create_response=$(curl --fail-with-body --silent --show-error \
+                -X POST \
+                -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+                -H "Content-Type: application/json" \
+                --data "$(jq -nc --arg name "${PROJECT_NAME}" --arg branch "${PRODUCTION_BRANCH}" \
+                  '{name: $name, production_branch: $branch}')" \
+                "${api_base}")
+              echo "${create_response}" | jq -e '.success == true' > /dev/null
+              echo "已创建 Pages 项目 ${PROJECT_NAME}，生产分支为 ${PRODUCTION_BRANCH}。"
+              ;;
+            *)
+              echo "::error::无法读取 Pages 项目 ${PROJECT_NAME}（HTTP ${http_status}）。"
+              cat "${project_file}"
+              exit 1
+              ;;
+          esac
 
       - name: 校验静态站点目录
         run: |
@@ -95,7 +144,20 @@ jobs:
             -H "Content-Type: application/json" \
             "${api_base}/${CUSTOM_DOMAIN}")
 
-          echo "域名状态：$(echo "${domain_json}" | jq -r '.result.status // "unknown"')"
+          domain_status=$(echo "${domain_json}" | jq -r '.result.status // "unknown"')
+          echo "域名状态：${domain_status}"
+          case "${domain_status}" in
+            active)
+              ;;
+            pending|initializing)
+              echo "::warning::自定义域名仍在校验中，请确认 ${CUSTOM_DOMAIN} 的 DNS/zone 配置。"
+              ;;
+            *)
+              echo "::error::自定义域名 ${CUSTOM_DOMAIN} 状态异常：${domain_status}。"
+              echo "${domain_json}" | jq -r '.result.validation_data, .result.verification_data'
+              exit 1
+              ;;
+          esac
           echo "站点地址：https://${CUSTOM_DOMAIN}/"
 
       - name: 输出部署地址
