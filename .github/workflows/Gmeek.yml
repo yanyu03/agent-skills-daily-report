@@ -91,6 +91,11 @@ jobs:
             python Gmeek.py "${{ secrets.GITHUB_TOKEN }}" "${{ github.repository }}"
           fi
 
+          # Keep the same-origin performance asset in the generated site.
+          if [ -f primer.css ]; then
+            cp primer.css docs/primer.css
+          fi
+
           # blog 分支只保留构建产物，不混入 Python 源码。
           find "${{ github.workspace }}/blog-site" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           cp -a docs "${{ github.workspace }}/blog-site/docs"
