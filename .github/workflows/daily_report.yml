@@ -2,17 +2,22 @@ name: 生成并发布中文日报
 
 on:
   schedule:
-    - cron: "0 16 * * *"
+    # UTC 22:17 = 北京时间次日 06:17，避开整点拥堵并为 08:00 前发布留出缓冲。
+    - cron: "17 22 * * *"
   workflow_dispatch:
 
 permissions:
-  actions: write
   contents: write
   issues: write
+
+concurrency:
+  group: daily-report-production
+  cancel-in-progress: false
 
 jobs:
   publish-report:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
 
     steps:
       - name: 检出 Python 源码分支
@@ -43,13 +48,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python main.py
 
-      - name: 同步为 Gmeek 文章 Issue
-        id: publish_issue
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python publish_issue.py
-
       - name: 提交日报到 py 分支
         run: |
           set -euo pipefail
@@ -65,10 +63,12 @@ jobs:
             git push origin HEAD:py
           fi
 
-      - name: 触发 Gmeek 构建
+      - name: 同步为 Gmeek 文章 Issue
+        id: publish_issue
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run Gmeek.yml --ref main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python publish_issue.py
 
       - name: 输出文章地址
         run: echo "${{ steps.publish_issue.outputs.issue_url }}"
