@@ -98,7 +98,8 @@ jobs:
           find "${{ github.workspace }}/blog-site" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           cp -a docs "${{ github.workspace }}/blog-site/docs"
           cp -a backup "${{ github.workspace }}/blog-site/backup"
-          cp blogBase.json "${{ github.workspace }}/blog-site/README.md"
+          cp blogBase.json "${{ github.workspace }}/blog-site/blogBase.json"
+          cp README.md "${{ github.workspace }}/blog-site/README.md"
           cp .gmeek-config.sha256 "${{ github.workspace }}/blog-site/.gmeek-config.sha256"
           touch "${{ github.workspace }}/blog-site/.nojekyll"
 
