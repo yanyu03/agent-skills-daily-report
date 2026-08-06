@@ -18,7 +18,7 @@ concurrency:
 jobs:
   publish-report:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: 检出 Python 源码分支
@@ -39,9 +39,15 @@ jobs:
           pip install -r requirements.txt
 
       - name: 检查 Python 语法
-        run: python -m py_compile main.py publish_issue.py tests/test_recommendations.py
+        run: |
+          python -m py_compile \
+            main.py \
+            skill_analysis.py \
+            publish_issue.py \
+            tests/test_recommendations.py \
+            tests/test_skill_analysis.py
 
-      - name: 验证用途分类和人群建议
+      - name: 验证仓库与 Skill 分析规则
         run: python -m unittest discover -s tests -v
 
       - name: 生成中文日报
