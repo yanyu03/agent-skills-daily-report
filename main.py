@@ -174,7 +174,18 @@ CATEGORY_RULES = (
     },
 )
 
+FALLBACK_CATEGORY = {
+    "name": "其他 Agent Skills 与方法论",
+    "keywords": (),
+    "purpose": "公开元数据不足，暂未能可靠判断主要用途，需要进一步阅读 README 和示例。",
+    "scenarios": "方法论、个人 Skills、实验性 Agent 配置或尚未明确归类的工具。",
+    "novice": "先查看 README 的安装步骤、示例和权限要求；缺少可运行示例时，不建议直接接入正式环境。",
+    "developer": "将其视为待核验候选项，进一步检查仓库结构、最近提交、许可证、测试和真实集成边界。",
+    "difficulty": "中",
+}
+
 DIFFICULTY_ORDER = {"低": 0, "中": 1, "高": 2}
+UNKNOWN_LICENSE_IDS = {"", "NOASSERTION", "OTHER"}
 
 
 def github_headers() -> dict[str, str]:
@@ -279,8 +290,8 @@ def keyword_score(text: str, keyword: str) -> int:
 
 def classify_project(item: dict) -> dict:
     text = project_search_text(item)
-    best_rule = CATEGORY_RULES[-1]
-    best_score = -1
+    best_rule: dict | None = None
+    best_score = 0
 
     for rule in CATEGORY_RULES:
         score = sum(keyword_score(text, keyword) for keyword in rule["keywords"])
@@ -288,12 +299,19 @@ def classify_project(item: dict) -> dict:
             best_rule = rule
             best_score = score
 
-    return dict(best_rule)
+    return dict(best_rule or FALLBACK_CATEGORY)
 
 
 def project_license(item: dict) -> str:
     license_info = item.get("license") or {}
-    return license_info.get("spdx_id") or license_info.get("name") or "未标注"
+    spdx_id = str(license_info.get("spdx_id") or "").strip()
+    license_name = str(license_info.get("name") or "").strip()
+
+    if spdx_id.upper() not in UNKNOWN_LICENSE_IDS:
+        return spdx_id
+    if license_name and license_name.lower() not in {"other", "unknown"}:
+        return license_name
+    return "需人工核验"
 
 
 def project_caution(item: dict, now: datetime) -> str:
@@ -302,11 +320,12 @@ def project_caution(item: dict, now: datetime) -> str:
         cautions.append("仓库已归档")
     if item.get("fork"):
         cautions.append("这是 Fork，需确认上游仓库")
-    if project_license(item) == "未标注":
-        cautions.append("许可证未标注")
-    days = days_since_update(item.get("updated_at"), now)
+    if project_license(item) == "需人工核验":
+        cautions.append("许可证信息不明确，需人工核验")
+    activity_time = item.get("pushed_at") or item.get("updated_at")
+    days = days_since_update(activity_time, now)
     if days is not None and days > 180:
-        cautions.append(f"最近更新距今约 {days} 天")
+        cautions.append(f"最近代码推送距今约 {days} 天")
     if not cautions:
         cautions.append("正式采用前仍需验证文档、许可证、维护状态和真实部署成本")
     return "；".join(cautions) + "。"
@@ -350,11 +369,12 @@ def analyze_projects(items: list[dict], now: datetime) -> list[dict]:
     analyses: list[dict] = []
     for item in items:
         profile = classify_project(item)
+        activity_time = item.get("pushed_at") or item.get("updated_at")
         analyses.append(
             {
                 "item": item,
                 "profile": profile,
-                "activity": activity_label(item.get("updated_at"), now),
+                "activity": activity_label(activity_time, now),
                 "license": project_license(item),
                 "beginner": project_beginner_advice(item, profile),
                 "developer": project_developer_advice(item, profile),
@@ -529,7 +549,8 @@ def generate_report(items: list[dict]) -> Path:
             "## 阅读提示",
             "",
             "- Star 数反映长期关注度，不代表项目当天新增热度。",
-            "- 用途分类来自关键词和公开元数据，遇到跨领域项目时可能只展示最主要的一类用途。",
+            "- 用途分类来自关键词和公开元数据；未可靠命中的项目会明确标记为待核验类别。",
+            "- 活跃度优先依据最近代码推送时间，而不是一般仓库元数据更新时间。",
             "- 项目简介保留仓库原文，避免自动翻译造成技术含义偏差。",
             "- 小白建议强调低风险试用路径；开发者建议强调集成、权限、可靠性和生产成本。",
             "- 正式选型前仍需检查 README、许可证、最近提交、Issue 活跃度、安全边界和实际部署成本。",
