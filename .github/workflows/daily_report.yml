@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
   issues: write
 
@@ -69,6 +70,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python publish_issue.py
+
+      # GITHUB_TOKEN 创建的 Issue 不会继续触发新的工作流，因此这里显式启动 Gmeek。
+      - name: 触发 Gmeek 构建
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run Gmeek.yml --ref main
 
       - name: 输出文章地址
         run: echo "${{ steps.publish_issue.outputs.issue_url }}"
