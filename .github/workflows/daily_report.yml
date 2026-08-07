@@ -1,6 +1,11 @@
 name: 生成并发布中文日报
 
 on:
+  push:
+    branches:
+      - agent/workflow-smoke-test
+    paths:
+      - .github/workflows/daily_report.yml
   schedule:
     # UTC 22:17 = 北京时间次日 06:17，避开整点拥堵并为 08:00 前发布留出缓冲。
     - cron: "17 22 * * *"
