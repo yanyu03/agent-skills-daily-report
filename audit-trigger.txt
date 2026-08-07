@@ -1,1 +1,1 @@
-Cloudflare cache audit rerun after direct deployment at 2026-08-07T08:42+08:00
+Verify production rebuild and Cloudflare dispatch at 2026-08-07T08:49+08:00
