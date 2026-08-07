@@ -1,6 +1,6 @@
 # Cloudflare Pages 缓存审计
 
-- **生成时间：** 2026-08-07 00:52:51 UTC
+- **生成时间：** 2026-08-07 00:54:40 UTC
 - **Pages 项目：** `agent-skills-daily-report`
 - **自定义域名：** `skill.250221.xyz`
 - **Zone：** `250221.xyz`
@@ -12,10 +12,10 @@
 - **生产分支：** `blog`
 - **pages.dev：** `https://agent-skills-daily-report-2ep.pages.dev`
 - **绑定域名：** `agent-skills-daily-report-2ep.pages.dev`, `report.takaosakuma.dpdns.org`
-- **最近部署 ID：** `d94a3eaa-09c3-4035-9534-0515534eb32f`
+- **最近部署 ID：** `e259e498-e31b-490e-b1cf-9fa0adcfa1d5`
 - **最近部署环境：** `production`
-- **最近部署时间：** `2026-08-07T00:41:33.457127Z`
-- **最近部署地址：** `https://d94a3eaa.agent-skills-daily-report-2ep.pages.dev`
+- **最近部署时间：** `2026-08-07T00:53:50.272414Z`
+- **最近部署地址：** `https://e259e498.agent-skills-daily-report-2ep.pages.dev`
 
 ## Zone 与缓存设置
 
