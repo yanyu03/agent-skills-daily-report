@@ -8,6 +8,7 @@ on:
       - "scripts/cloudflare_cache_audit.py"
       - "scripts/cloudflare_account_audit_extra.py"
       - "scripts/github_gmeek_runs_audit.py"
+      - "scripts/cloudflare_deployment_url_compare.py"
       - "audit-trigger.txt"
   workflow_dispatch:
 
@@ -74,6 +75,12 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python scripts/github_gmeek_runs_audit.py
 
+      - name: 对比唯一部署地址与生产别名
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python scripts/cloudflare_deployment_url_compare.py
+
       - name: 提交脱敏审计报告
         run: |
           set -euo pipefail
@@ -82,7 +89,8 @@ jobs:
           git add \
             audit/cloudflare-cache-report.md \
             audit/cloudflare-account-extra.md \
-            audit/gmeek-workflow-runs.md
+            audit/gmeek-workflow-runs.md \
+            audit/cloudflare-deployment-url-compare.md
           if git diff --cached --quiet; then
             echo "审计结果没有变化。"
           else
