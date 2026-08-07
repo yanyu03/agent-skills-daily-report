@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime
 
-from main import TIMEZONE, analyze_projects, classify_project
+from main import TIMEZONE, analyze_projects, classify_project, project_license
 
 
 class RecommendationRulesTest(unittest.TestCase):
@@ -45,6 +45,24 @@ class RecommendationRulesTest(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertEqual(classify_project(item)["name"], expected)
 
+    def test_unmatched_project_uses_explicit_fallback(self):
+        item = {
+            "name": "ponytail",
+            "description": "Makes your AI agent think like a senior developer.",
+            "topics": [],
+        }
+
+        self.assertEqual(
+            classify_project(item)["name"],
+            "其他 Agent Skills 与方法论",
+        )
+
+    def test_unknown_license_values_require_manual_review(self):
+        for spdx_id in (None, "", "NOASSERTION", "OTHER"):
+            with self.subTest(spdx_id=spdx_id):
+                item = {"license": {"spdx_id": spdx_id}}
+                self.assertEqual(project_license(item), "需人工核验")
+
     def test_analysis_contains_both_audience_views(self):
         item = {
             "name": "example-mcp-server",
@@ -52,7 +70,8 @@ class RecommendationRulesTest(unittest.TestCase):
             "description": "A Model Context Protocol server for files.",
             "topics": ["model-context-protocol"],
             "language": "Python",
-            "updated_at": "2026-08-05T00:00:00Z",
+            "updated_at": "2026-08-05T22:00:00Z",
+            "pushed_at": "2026-05-01T00:00:00Z",
             "stargazers_count": 100,
             "license": {"spdx_id": "MIT"},
         }
@@ -63,6 +82,7 @@ class RecommendationRulesTest(unittest.TestCase):
         self.assertIn("只读工具", analysis["beginner"])
         self.assertIn("最小权限", analysis["developer"])
         self.assertEqual(analysis["license"], "MIT")
+        self.assertEqual(analysis["activity"], "一般")
 
 
 if __name__ == "__main__":

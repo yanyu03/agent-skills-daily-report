@@ -1,3 +1,4 @@
+import html
 import os
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -5,6 +6,15 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
+
+from skill_analysis import (
+    SCENARIO_DESCRIPTIONS,
+    group_skills_by_scenario,
+    recommend_skills,
+    scan_projects_for_skills,
+    skill_recommendation_summary,
+    skill_resource_summary,
+)
 
 TIMEZONE = ZoneInfo("Asia/Shanghai")
 SEARCH_ENDPOINT = "https://api.github.com/search/repositories"
@@ -174,7 +184,18 @@ CATEGORY_RULES = (
     },
 )
 
+FALLBACK_CATEGORY = {
+    "name": "其他 Agent Skills 与方法论",
+    "keywords": (),
+    "purpose": "公开元数据不足，暂未能可靠判断主要用途，需要进一步阅读 README 和示例。",
+    "scenarios": "方法论、个人 Skills、实验性 Agent 配置或尚未明确归类的工具。",
+    "novice": "先查看 README 的安装步骤、示例和权限要求；缺少可运行示例时，不建议直接接入正式环境。",
+    "developer": "将其视为待核验候选项，进一步检查仓库结构、最近提交、许可证、测试和真实集成边界。",
+    "difficulty": "中",
+}
+
 DIFFICULTY_ORDER = {"低": 0, "中": 1, "高": 2}
+UNKNOWN_LICENSE_IDS = {"", "NOASSERTION", "OTHER"}
 
 
 def github_headers() -> dict[str, str]:
@@ -217,6 +238,10 @@ def fetch_projects() -> list[dict]:
 def clean_markdown_text(value: str | None, *, table: bool = False) -> str:
     text = " ".join((value or "暂无项目简介。").split())
     return text.replace("|", "\\|") if table else text
+
+
+def inline_code(value: str | None) -> str:
+    return (value or "").replace("`", "ˋ")
 
 
 def format_updated_at(value: str | None) -> str:
@@ -279,8 +304,8 @@ def keyword_score(text: str, keyword: str) -> int:
 
 def classify_project(item: dict) -> dict:
     text = project_search_text(item)
-    best_rule = CATEGORY_RULES[-1]
-    best_score = -1
+    best_rule: dict | None = None
+    best_score = 0
 
     for rule in CATEGORY_RULES:
         score = sum(keyword_score(text, keyword) for keyword in rule["keywords"])
@@ -288,12 +313,19 @@ def classify_project(item: dict) -> dict:
             best_rule = rule
             best_score = score
 
-    return dict(best_rule)
+    return dict(best_rule or FALLBACK_CATEGORY)
 
 
 def project_license(item: dict) -> str:
     license_info = item.get("license") or {}
-    return license_info.get("spdx_id") or license_info.get("name") or "未标注"
+    spdx_id = str(license_info.get("spdx_id") or "").strip()
+    license_name = str(license_info.get("name") or "").strip()
+
+    if spdx_id.upper() not in UNKNOWN_LICENSE_IDS:
+        return spdx_id
+    if license_name and license_name.lower() not in {"other", "unknown"}:
+        return license_name
+    return "需人工核验"
 
 
 def project_caution(item: dict, now: datetime) -> str:
@@ -302,11 +334,12 @@ def project_caution(item: dict, now: datetime) -> str:
         cautions.append("仓库已归档")
     if item.get("fork"):
         cautions.append("这是 Fork，需确认上游仓库")
-    if project_license(item) == "未标注":
-        cautions.append("许可证未标注")
-    days = days_since_update(item.get("updated_at"), now)
+    if project_license(item) == "需人工核验":
+        cautions.append("许可证信息不明确，需人工核验")
+    activity_time = item.get("pushed_at") or item.get("updated_at")
+    days = days_since_update(activity_time, now)
     if days is not None and days > 180:
-        cautions.append(f"最近更新距今约 {days} 天")
+        cautions.append(f"最近代码推送距今约 {days} 天")
     if not cautions:
         cautions.append("正式采用前仍需验证文档、许可证、维护状态和真实部署成本")
     return "；".join(cautions) + "。"
@@ -350,11 +383,12 @@ def analyze_projects(items: list[dict], now: datetime) -> list[dict]:
     analyses: list[dict] = []
     for item in items:
         profile = classify_project(item)
+        activity_time = item.get("pushed_at") or item.get("updated_at")
         analyses.append(
             {
                 "item": item,
                 "profile": profile,
-                "activity": activity_label(item.get("updated_at"), now),
+                "activity": activity_label(activity_time, now),
                 "license": project_license(item),
                 "beginner": project_beginner_advice(item, profile),
                 "developer": project_developer_advice(item, profile),
@@ -367,6 +401,12 @@ def analyze_projects(items: list[dict], now: datetime) -> list[dict]:
 def linked_project(item: dict) -> str:
     name = item.get("full_name", "未知项目")
     url = item.get("html_url", "")
+    return f"[{name}]({url})" if url else name
+
+
+def linked_skill(skill: dict) -> str:
+    name = clean_markdown_text(str(skill.get("name") or "未知 Skill"))
+    url = str(skill.get("url") or "")
     return f"[{name}]({url})" if url else name
 
 
@@ -397,8 +437,232 @@ def grouped_scenarios(analyses: list[dict]) -> list[tuple[str, list[dict], dict]
     ]
 
 
-def generate_report(items: list[dict]) -> Path:
-    now = datetime.now(TIMEZONE)
+def empty_skill_scan(items: list[dict], message: str) -> dict:
+    return {
+        "skills": [],
+        "repositories": [
+            {
+                "item": item,
+                "skills": [],
+                "discovered_count": 0,
+                "tree_truncated": False,
+                "scan_note": message,
+            }
+            for item in items
+        ],
+        "errors": [message],
+        "repositories_with_skills": 0,
+        "discovered_skills": 0,
+    }
+
+
+def scan_skills_safely(items: list[dict], analyses: list[dict]) -> dict:
+    try:
+        return scan_projects_for_skills(
+            items,
+            github_headers(),
+            analyses,
+        )
+    except Exception as exc:
+        return empty_skill_scan(items, f"Skill 扫描异常：{exc}")
+
+
+def render_recommended_skills(content: list[str], skills: list[dict]) -> list[dict]:
+    recommendations = recommend_skills(skills, limit=3)
+    content.extend(["", "## 今日推荐 Skill", ""])
+
+    if not recommendations:
+        content.extend(
+            [
+                "> 本期未能读取到可分析的 `SKILL.md`，以下仓库榜单仍可用于项目层初筛。",
+                "",
+            ]
+        )
+        return recommendations
+
+    content.append(
+        "> 推荐依据是 Skill 元数据、说明结构、配套资源、仓库活跃度和静态风险提示；不代表已经执行或验证该 Skill。"
+    )
+    content.append("")
+
+    for rank, skill in enumerate(recommendations, start=1):
+        risk_reasons = "；".join(skill.get("risk_reasons") or [])
+        content.extend(
+            [
+                f"### {rank}. {linked_skill(skill)}",
+                "",
+                f"> {clean_markdown_text(skill.get('description'))}",
+                "",
+                f"- **来源仓库：** [{skill['repository']}]({skill.get('repository_url')})",
+                f"- **适合场景：** {skill.get('scenario')}",
+                f"- **结构完整度：** {skill.get('structure_score')}/100（{skill.get('structure_label')}）",
+                f"- **静态风险提示：** {skill.get('risk_level')}（{risk_reasons}）",
+                f"- **配套资源：** {skill_resource_summary(skill)}；SKILL.md 有效内容约 {skill.get('body_lines')} 行",
+                f"- **兼容性：** {skill.get('compatibility') or '未声明'}",
+                f"- **推荐理由：** {skill_recommendation_summary(skill)}",
+            ]
+        )
+        if skill.get("install_hint"):
+            content.append(
+                f"- **安装线索：** `{inline_code(skill.get('install_hint'))}`"
+            )
+        if skill.get("allowed_tools"):
+            content.append(
+                f"- **预授权工具：** `{inline_code(skill.get('allowed_tools'))}`"
+            )
+        content.append("")
+
+    return recommendations
+
+
+def render_skill_scenarios(content: list[str], skills: list[dict]) -> None:
+    content.extend(
+        [
+            "## 按使用场景浏览 Skill",
+            "",
+            "| 使用场景 | 本期 Skill | 适合解决的问题 |",
+            "| --- | --- | --- |",
+        ]
+    )
+
+    grouped = group_skills_by_scenario(skills)
+    if not grouped:
+        content.append("| 暂无 | 本期没有成功读取的 Skill | 请参考后面的仓库榜单 |")
+        content.append("")
+        return
+
+    for scenario, scenario_skills in grouped:
+        links = "、".join(linked_skill(skill) for skill in scenario_skills[:5])
+        if len(scenario_skills) > 5:
+            links += f" 等 {len(scenario_skills)} 个"
+        description = SCENARIO_DESCRIPTIONS.get(
+            scenario,
+            SCENARIO_DESCRIPTIONS["其他场景"],
+        )
+        content.append(
+            f"| {scenario} | {links} | {clean_markdown_text(description, table=True)} |"
+        )
+    content.append("")
+
+
+def render_repository_skill_directory(
+    content: list[str],
+    skill_scan: dict,
+    analysis_by_repo: dict[str, dict],
+) -> None:
+    content.extend(
+        [
+            "## 仓库—Skill 目录",
+            "",
+            "| 仓库 | 发现 SKILL.md | 本期读取 | 代表 Skill | 活跃度 | 许可证 |",
+            "| --- | ---: | ---: | --- | --- | --- |",
+        ]
+    )
+
+    repositories = skill_scan.get("repositories") or []
+    for repository in repositories:
+        item = repository["item"]
+        repo_name = item.get("full_name")
+        analysis = analysis_by_repo.get(repo_name, {})
+        repo_skills = repository.get("skills") or []
+        representative = "、".join(linked_skill(skill) for skill in repo_skills)
+        content.append(
+            f"| {linked_project(item)} | {repository.get('discovered_count', 0)} | "
+            f"{len(repo_skills)} | {representative or '未读取到 Skill'} | "
+            f"{analysis.get('activity', '未知')} | {analysis.get('license', '需人工核验')} |"
+        )
+
+    content.append("")
+
+    for repository in repositories:
+        repo_skills = repository.get("skills") or []
+        if not repo_skills:
+            continue
+
+        item = repository["item"]
+        analysis = analysis_by_repo.get(item.get("full_name"), {})
+        summary_text = html.escape(
+            f"展开查看 {len(repo_skills)} 个 Skill；仓库共发现 "
+            f"{repository.get('discovered_count', 0)} 个 SKILL.md"
+        )
+        content.extend(
+            [
+                f"### {linked_project(item)}",
+                "",
+                f"- **仓库定位：** {analysis.get('profile', {}).get('purpose', '待核验')}",
+                f"- **仓库状态：** {analysis.get('activity', '未知')}；许可证 {analysis.get('license', '需人工核验')}",
+            ]
+        )
+        if repository.get("scan_note"):
+            content.append(f"- **扫描说明：** {repository['scan_note']}")
+        content.extend(["", "<details>", f"<summary>{summary_text}</summary>", ""])
+
+        for skill in repo_skills:
+            risk_reasons = "；".join(skill.get("risk_reasons") or [])
+            content.extend(
+                [
+                    f"#### {linked_skill(skill)}",
+                    "",
+                    f"- **说明：** {clean_markdown_text(skill.get('description'))}",
+                    f"- **场景：** {skill.get('scenario')}",
+                    f"- **结构：** {skill.get('structure_score')}/100（{skill.get('structure_label')}）；"
+                    f"{skill_resource_summary(skill)}",
+                    f"- **风险：** {skill.get('risk_level')}（{risk_reasons}）",
+                    f"- **来源路径：** `{inline_code(skill.get('path'))}`",
+                ]
+            )
+            if skill.get("compatibility"):
+                content.append(f"- **兼容性：** {skill['compatibility']}")
+            if skill.get("declared_license"):
+                content.append(f"- **Skill 声明许可证：** {skill['declared_license']}")
+            if skill.get("install_hint"):
+                content.append(
+                    f"- **安装线索：** `{inline_code(skill.get('install_hint'))}`"
+                )
+            content.append("")
+
+        content.extend(["</details>", ""])
+
+
+def render_project_table(content: list[str], analyses: list[dict]) -> None:
+    content.extend(
+        [
+            "## 高关注仓库榜单",
+            "",
+            "| 排名 | 项目 | 仓库定位 | Stars | 语言 | 活跃度 | 许可证 |",
+            "| ---: | --- | --- | ---: | --- | --- | --- |",
+        ]
+    )
+
+    for rank, analysis in enumerate(analyses, start=1):
+        item = analysis["item"]
+        content.append(
+            f"| {rank} | {linked_project(item)} | {analysis['profile']['name']} | "
+            f"{int(item.get('stargazers_count', 0)):,} | "
+            f"{item.get('language') or '未标注'} | {analysis['activity']} | "
+            f"{analysis['license']} |"
+        )
+    content.append("")
+
+
+def render_project_guidance(content: list[str], analyses: list[dict]) -> None:
+    content.extend(["## 仓库层选型提醒", ""])
+    for analysis in analyses:
+        item = analysis["item"]
+        content.append(
+            f"- **{linked_project(item)}**：{analysis['profile']['purpose']}"
+            f"{analysis['caution']}"
+        )
+    content.append("")
+
+
+def generate_report(
+    items: list[dict],
+    *,
+    skill_scan: dict | None = None,
+    now: datetime | None = None,
+) -> Path:
+    now = now or datetime.now(TIMEZONE)
     report_date = now.strftime("%Y-%m-%d")
     report_month = now.strftime("%Y-%m")
     generated_at = now.strftime("%Y-%m-%d %H:%M")
@@ -408,6 +672,14 @@ def generate_report(items: list[dict]) -> Path:
     filepath = output_dir / f"{report_date}.md"
 
     analyses = analyze_projects(items, now)
+    analysis_by_repo = {
+        analysis["item"].get("full_name"): analysis for analysis in analyses
+    }
+    if skill_scan is None:
+        skill_scan = scan_skills_safely(items, analyses)
+
+    skills = skill_scan.get("skills") or []
+    recommendations = recommend_skills(skills, limit=3)
     total_stars = sum(int(item.get("stargazers_count", 0)) for item in items)
     category_counts = Counter(
         analysis["profile"]["name"] for analysis in analyses
@@ -421,122 +693,61 @@ def generate_report(items: list[dict]) -> Path:
         f"# AI Agent Skills 与 MCP 每日观察｜{report_date}",
         "",
         "> [!NOTE]",
-        "> 本报告由 GitHub Actions 自动生成，按 GitHub Search API 返回的 Star 数排序，用于观察高关注度项目；它不是 GitHub 官方趋势榜。用途分类和建议由项目名称、简介、Topics 与公开元数据进行规则化判断，适合作为初筛参考，不代替实际试用。",
+        "> 本报告先从 GitHub Search API 获取高关注仓库，再有限读取公开 `SKILL.md`，提取用途、触发描述、配套资源、兼容性和静态风险线索。它不是 GitHub 官方趋势榜，也不等于对 Skill 的运行验证。",
         "",
         "## 今日概览",
         "",
-        f"- **收录项目：** {len(items)} 个",
+        f"- **收录仓库：** {len(items)} 个",
+        f"- **发现 SKILL.md：** {skill_scan.get('discovered_skills', 0)} 个",
+        f"- **本期读取 Skill：** {len(skills)} 个",
+        f"- **含 Skill 仓库：** {skill_scan.get('repositories_with_skills', 0)} 个",
+        f"- **重点推荐：** {len(recommendations)} 个",
         f"- **合计 Stars：** {total_stars:,}",
         f"- **主要语言：** {language_summary(items)}",
-        f"- **用途分布：** {category_summary}",
+        f"- **仓库用途分布：** {category_summary}",
         f"- **生成时间：** {generated_at}（Asia/Shanghai）",
         "",
-        "## 项目榜单",
-        "",
-        "| 排名 | 项目 | 用途定位 | 上手门槛 | Stars | 语言 | 活跃度 | 许可证 |",
-        "| ---: | --- | --- | --- | ---: | --- | --- | --- |",
     ]
 
-    for rank, analysis in enumerate(analyses, start=1):
-        item = analysis["item"]
-        profile = analysis["profile"]
-        content.append(
-            f"| {rank} | {linked_project(item)} | {profile['name']} | "
-            f"{profile['difficulty']} | {int(item.get('stargazers_count', 0)):,} | "
-            f"{item.get('language') or '未标注'} | {analysis['activity']} | "
-            f"{analysis['license']} |"
-        )
+    render_recommended_skills(content, skills)
+    render_skill_scenarios(content, skills)
+    render_repository_skill_directory(content, skill_scan, analysis_by_repo)
+    render_project_table(content, analyses)
+    render_project_guidance(content, analyses)
 
     content.extend(
         [
+            "## 阅读与使用提示",
             "",
-            "## 按用途和场景快速选择",
-            "",
-            "| 用途 | 本期项目 | 适合场景 | 小白入口 | 开发者关注点 |",
-            "| --- | --- | --- | --- | --- |",
+            "- 每个仓库本期最多读取 3 个 `SKILL.md`，全期最多读取 20 个，防止大型仓库拖慢日报。",
+            "- Skill 名称与 description 来自 frontmatter；description 是判断何时触发 Skill 的主要公开线索。",
+            "- 结构完整度只检查元数据、主体长度、标题、示例和配套资源，不代表任务效果得分。",
+            "- 静态风险提示来自文本和目录结构，没有执行脚本，也不能代替人工安全审查。",
+            "- 仓库活跃度优先依据最近代码推送时间；许可证不明确时统一标为“需人工核验”。",
+            "- Star 数反映长期关注度，不代表当天新增热度；后续将通过每日快照补充 Star 增量、首次发现和排名变化。",
         ]
     )
 
-    for category, category_items, profile in grouped_scenarios(analyses):
-        project_links = "、".join(
-            linked_project(analysis["item"]) for analysis in category_items
-        )
-        content.append(
-            f"| {category} | {project_links} | "
-            f"{clean_markdown_text(profile['scenarios'], table=True)} | "
-            f"{clean_markdown_text(profile['novice'], table=True)} | "
-            f"{clean_markdown_text(profile['developer'], table=True)} |"
-        )
-
-    beginner_choices = sorted(
-        analyses,
-        key=lambda analysis: (
-            DIFFICULTY_ORDER[analysis["profile"]["difficulty"]],
-            -int(analysis["item"].get("stargazers_count", 0)),
-        ),
-    )[:3]
-    developer_choices = sorted(
-        analyses,
-        key=lambda analysis: (
-            -DIFFICULTY_ORDER[analysis["profile"]["difficulty"]],
-            -int(analysis["item"].get("stargazers_count", 0)),
-        ),
-    )[:3]
-
-    content.extend(
-        [
-            "",
-            "## 人群建议",
-            "",
-            "### 小白优先看",
-            "",
-        ]
-    )
-    for analysis in beginner_choices:
-        content.append(
-            f"- **{linked_project(analysis['item'])}**："
-            f"{analysis['profile']['name']}，上手门槛"
-            f"{analysis['profile']['difficulty']}。{analysis['beginner']}"
-        )
-
-    content.extend(["", "### 开发者优先看", ""])
-    for analysis in developer_choices:
-        content.append(
-            f"- **{linked_project(analysis['item'])}**："
-            f"{analysis['profile']['name']}。{analysis['developer']}"
-        )
-
-    content.extend(["", "## 项目逐项说明", ""])
-    for rank, analysis in enumerate(analyses, start=1):
-        item = analysis["item"]
-        profile = analysis["profile"]
+    errors = skill_scan.get("errors") or []
+    if errors:
         content.extend(
             [
-                f"### {rank}. {linked_project(item)}",
                 "",
-                f"- **用途定位：** {profile['purpose']}",
-                f"- **适合场景：** {profile['scenarios']}",
-                f"- **项目原始简介：** {clean_markdown_text(item.get('description'))}",
-                f"- **小白建议：** {analysis['beginner']}",
-                f"- **开发者建议：** {analysis['developer']}",
-                f"- **选型提醒：** {analysis['caution']}",
+                "<details>",
+                f"<summary>查看 Skill 扫描提示（{len(errors)} 条）</summary>",
                 "",
             ]
         )
+        for error in errors[:10]:
+            content.append(f"- {clean_markdown_text(str(error))}")
+        content.extend(["", "</details>"])
 
     content.extend(
         [
-            "## 阅读提示",
-            "",
-            "- Star 数反映长期关注度，不代表项目当天新增热度。",
-            "- 用途分类来自关键词和公开元数据，遇到跨领域项目时可能只展示最主要的一类用途。",
-            "- 项目简介保留仓库原文，避免自动翻译造成技术含义偏差。",
-            "- 小白建议强调低风险试用路径；开发者建议强调集成、权限、可靠性和生产成本。",
-            "- 正式选型前仍需检查 README、许可证、最近提交、Issue 活跃度、安全边界和实际部署成本。",
             "",
             "---",
             "",
-            "由 `agent-skills-daily-report` 自动采集、整理并发布。",
+            "由 `agent-skills-daily-report` 自动采集、结构化分析并发布。",
             "",
         ]
     )
