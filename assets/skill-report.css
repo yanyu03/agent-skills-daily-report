@@ -1,0 +1,444 @@
+@layer theme, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme) theme(static);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@plugin "@tailwindcss/typography" {
+  className: skill-prose;
+}
+
+@custom-variant dark (&:where([data-color-mode="dark"], [data-color-mode="dark"] *));
+
+@source inline("skill-prose skill-prose-slate max-w-none dark:skill-prose-invert");
+
+@theme {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+
+  --color-skill-canvas: #f5f7fb;
+  --color-skill-surface: #ffffff;
+  --color-skill-surface-soft: #f8fafc;
+  --color-skill-text: #172033;
+  --color-skill-muted: #667085;
+  --color-skill-border: #dfe5ef;
+  --color-skill-accent: #5b5bd6;
+  --color-skill-accent-soft: #eeeeff;
+  --color-skill-cyan: #087e8b;
+  --color-skill-cyan-soft: #e6f6f7;
+  --color-skill-success: #16865c;
+  --color-skill-warning: #a45a08;
+  --color-skill-danger: #c83e4d;
+
+  --radius-skill-sm: 8px;
+  --radius-skill: 14px;
+  --radius-skill-lg: 20px;
+
+  --shadow-skill:
+    0 1px 2px rgb(16 24 40 / 4%),
+    0 10px 30px rgb(16 24 40 / 7%);
+}
+
+:root {
+  color-scheme: light;
+  --skill-canvas: var(--color-skill-canvas);
+  --skill-surface: var(--color-skill-surface);
+  --skill-surface-soft: var(--color-skill-surface-soft);
+  --skill-text: var(--color-skill-text);
+  --skill-muted: var(--color-skill-muted);
+  --skill-border: var(--color-skill-border);
+  --skill-accent: var(--color-skill-accent);
+  --skill-accent-soft: var(--color-skill-accent-soft);
+  --skill-cyan: var(--color-skill-cyan);
+  --skill-cyan-soft: var(--color-skill-cyan-soft);
+}
+
+[data-color-mode="dark"] {
+  color-scheme: dark;
+  --skill-canvas: #0d1117;
+  --skill-surface: #161b22;
+  --skill-surface-soft: #1c2128;
+  --skill-text: #e6edf3;
+  --skill-muted: #9da7b3;
+  --skill-border: #30363d;
+  --skill-accent: #a5a5ff;
+  --skill-accent-soft: #26264f;
+  --skill-cyan: #79cbd3;
+  --skill-cyan-soft: #12383c;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body.skill-site {
+  width: auto !important;
+  max-width: 1180px !important;
+  margin: 0 auto !important;
+  padding: clamp(18px, 4vw, 48px) !important;
+  color: var(--skill-text);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--skill-accent) 12%, transparent), transparent 34rem),
+    linear-gradient(180deg, var(--skill-canvas), var(--skill-surface) 34rem) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 16px;
+  line-height: 1.65 !important;
+}
+
+body.skill-post-page {
+  max-width: 1120px !important;
+}
+
+body.skill-site a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+body.skill-site a:hover {
+  text-decoration-thickness: 2px;
+}
+
+body.skill-site #header {
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 12px 14px 18px;
+  border-bottom: 1px solid var(--skill-border);
+  background: color-mix(in srgb, var(--skill-surface) 82%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+body.skill-site .postTitle,
+body.skill-site .title-left a {
+  letter-spacing: -0.035em;
+}
+
+body.skill-site #footer {
+  color: var(--skill-muted);
+}
+
+.skill-home-page #content > div:first-child {
+  max-width: 760px;
+  margin: 8px 4px 22px !important;
+  color: var(--skill-muted);
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.skill-home-page .skill-post-list {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--skill-border) !important;
+  border-radius: var(--radius-skill-lg);
+  background: var(--skill-surface);
+  box-shadow: var(--shadow-skill);
+}
+
+.skill-home-page .skill-post-list .SideNav-item {
+  min-height: 68px;
+  padding: 16px 18px;
+  border-color: var(--skill-border);
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.skill-home-page .skill-post-list .SideNav-item:hover {
+  background: var(--skill-accent-soft);
+  transform: translateX(2px);
+}
+
+.skill-home-page .skill-post-list .listTitle {
+  font-weight: 650;
+  letter-spacing: -0.012em;
+}
+
+.skill-home-page .skill-post-list .Label {
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+#postBody.skill-report {
+  max-width: none;
+  padding: clamp(22px, 4vw, 46px);
+  border: 1px solid var(--skill-border);
+  border-radius: var(--radius-skill-lg);
+  background: var(--skill-surface);
+  box-shadow: var(--shadow-skill);
+}
+
+#postBody.skill-report > h1:first-child {
+  display: none;
+}
+
+#postBody.skill-report h2 {
+  margin-top: 2.4em;
+  padding-bottom: 0.55em;
+  border-bottom: 1px solid var(--skill-border);
+  color: var(--skill-text);
+  letter-spacing: -0.025em;
+  scroll-margin-top: 24px;
+}
+
+#postBody.skill-report h3,
+#postBody.skill-report h4 {
+  color: var(--skill-text);
+  letter-spacing: -0.018em;
+  scroll-margin-top: 24px;
+}
+
+#postBody.skill-report .section-heading {
+  position: relative;
+  padding-left: 18px;
+}
+
+#postBody.skill-report .section-heading::before {
+  position: absolute;
+  top: 0.15em;
+  bottom: 0.7em;
+  left: 0;
+  width: 5px;
+  border-radius: 999px;
+  background: var(--skill-accent);
+  content: "";
+}
+
+#postBody.skill-report .section-heading--scenario::before {
+  background: var(--skill-cyan);
+}
+
+#postBody.skill-report p,
+#postBody.skill-report li {
+  color: var(--skill-text);
+}
+
+#postBody.skill-report > blockquote {
+  border-left-color: var(--skill-accent);
+  border-radius: 0 var(--radius-skill-sm) var(--radius-skill-sm) 0;
+  background: var(--skill-accent-soft);
+  color: var(--skill-muted);
+}
+
+#postBody.skill-report .metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 30px;
+  padding: 0;
+  list-style: none;
+}
+
+#postBody.skill-report .metric-grid > li {
+  min-width: 0;
+  margin: 0;
+  padding: 14px 15px;
+  border: 1px solid var(--skill-border);
+  border-radius: var(--radius-skill);
+  background: var(--skill-surface-soft);
+}
+
+#postBody.skill-report .metric-grid strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--skill-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+#postBody.skill-report .skill-card {
+  position: relative;
+  margin: 18px 0;
+  padding: 22px 24px;
+  overflow: hidden;
+  border: 1px solid var(--skill-border);
+  border-radius: var(--radius-skill);
+  background:
+    linear-gradient(135deg, var(--skill-surface), var(--skill-surface-soft));
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 4%),
+    0 8px 20px rgb(16 24 40 / 5%);
+}
+
+#postBody.skill-report .skill-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, var(--skill-accent), var(--skill-cyan));
+  content: "";
+}
+
+#postBody.skill-report .skill-card h3 {
+  margin: 0 0 0.65em;
+  font-size: 1.28rem;
+}
+
+#postBody.skill-report .skill-card blockquote {
+  margin: 14px 0;
+  border-left: 3px solid var(--skill-cyan);
+  border-radius: 0 var(--radius-skill-sm) var(--radius-skill-sm) 0;
+  background: var(--skill-cyan-soft);
+}
+
+#postBody.skill-report .skill-card ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 22px;
+  margin-bottom: 0;
+}
+
+#postBody.skill-report .skill-card li {
+  margin: 0;
+}
+
+#postBody.skill-report .table-scroll {
+  display: block;
+  max-width: 100%;
+  margin: 18px 0 30px;
+  overflow-x: auto;
+  border: 1px solid var(--skill-border);
+  border-radius: var(--radius-skill);
+  background: var(--skill-surface);
+  -webkit-overflow-scrolling: touch;
+}
+
+#postBody.skill-report .table-scroll table {
+  display: table;
+  width: 100%;
+  min-width: 760px;
+  margin: 0;
+  border: 0;
+  font-size: 0.88rem;
+}
+
+#postBody.skill-report .table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--skill-surface-soft);
+  color: var(--skill-text);
+  font-weight: 700;
+}
+
+#postBody.skill-report .table-scroll th,
+#postBody.skill-report .table-scroll td {
+  padding: 11px 13px;
+  border-color: var(--skill-border);
+  vertical-align: top;
+}
+
+#postBody.skill-report .table-scroll tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--skill-surface-soft) 72%, transparent);
+}
+
+#postBody.skill-report .skill-details {
+  margin: 16px 0 24px;
+  overflow: hidden;
+  border: 1px solid var(--skill-border);
+  border-radius: var(--radius-skill);
+  background: var(--skill-surface);
+}
+
+#postBody.skill-report .skill-details > summary {
+  cursor: pointer;
+  padding: 14px 17px;
+  color: var(--skill-text);
+  background: var(--skill-surface-soft);
+  font-weight: 700;
+  transition: background-color 150ms ease;
+}
+
+#postBody.skill-report .skill-details > summary:hover {
+  background: var(--skill-accent-soft);
+}
+
+#postBody.skill-report .skill-details[open] > summary {
+  border-bottom: 1px solid var(--skill-border);
+}
+
+#postBody.skill-report .skill-details > :not(summary) {
+  margin-right: 18px;
+  margin-left: 18px;
+}
+
+#postBody.skill-report code {
+  border: 1px solid var(--skill-border);
+  border-radius: 6px;
+  background: var(--skill-surface-soft);
+}
+
+#postBody.skill-report pre {
+  border: 1px solid var(--skill-border);
+  border-radius: var(--radius-skill);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+#postBody.skill-report hr {
+  margin: 2.6em 0;
+  border-color: var(--skill-border);
+}
+
+@media (max-width: 860px) {
+  #postBody.skill-report .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #postBody.skill-report .skill-card ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  body.skill-site {
+    padding: 10px !important;
+    background: var(--skill-canvas) !important;
+  }
+
+  body.skill-site #header {
+    margin-bottom: 12px;
+    padding: 8px 4px 12px;
+    background: transparent;
+    backdrop-filter: none;
+  }
+
+  #postBody.skill-report {
+    padding: 18px 15px;
+    border-radius: var(--radius-skill);
+    box-shadow: none;
+  }
+
+  #postBody.skill-report .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #postBody.skill-report .skill-card {
+    padding: 18px 16px 18px 20px;
+  }
+
+  #postBody.skill-report .table-scroll {
+    margin-right: -4px;
+    margin-left: -4px;
+    border-radius: var(--radius-skill-sm);
+  }
+
+  .skill-home-page .skill-post-list .SideNav-item {
+    align-items: flex-start !important;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .skill-home-page .skill-post-list .listLabels {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .skill-home-page .skill-post-list .SideNav-item {
+    transition: none;
+  }
+}
