@@ -18,7 +18,7 @@
   "rssSplit": "sentence",
   "bottomText": "数据来自 GitHub Search API；用途分类与使用建议用于初筛参考。",
   "allHead": "<meta name='language' content='zh-CN'><meta property='og:locale' content='zh_CN'><meta name='robots' content='index,follow'><link rel='preconnect' href='https://mirrors.sustech.edu.cn' crossorigin>",
-  "indexStyle": "<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif}</style>",
-  "style": "<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif}#postBody{line-height:1.8}table{display:block;overflow-x:auto;white-space:normal}.markdown-body li{margin-bottom:.35em}</style>",
+  "indexStyle": "<style>@import url('/assets/skill-report.css');</style>",
+  "style": "<style>@import url('/assets/skill-report.css');</style>",
   "GMEEK_VERSION": "last"
 }
