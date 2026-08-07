@@ -1,0 +1,13 @@
+{
+  "name": "agent-skills-daily-report-style",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build:css": "tailwindcss -i ./assets/skill-report.css -o ./docs/assets/skill-report.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "@tailwindcss/typography": "0.5.20",
+    "tailwindcss": "4.3.3"
+  }
+}
