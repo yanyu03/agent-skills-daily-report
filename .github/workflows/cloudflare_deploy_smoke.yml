@@ -1,0 +1,73 @@
+name: Cloudflare Pages 直传烟雾测试
+
+on:
+  push:
+    branches: ["agent/cloudflare-deploy-smoke"]
+    paths:
+      - ".github/workflows/cloudflare_deploy_smoke.yml"
+      - "deploy-trigger.txt"
+
+permissions:
+  contents: write
+  deployments: write
+
+concurrency:
+  group: cloudflare-deploy-smoke
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: 检出测试分支
+        uses: actions/checkout@v6
+        with:
+          ref: agent/cloudflare-deploy-smoke
+          fetch-depth: 0
+
+      - name: 检出 blog 静态产物
+        uses: actions/checkout@v6
+        with:
+          ref: blog
+          path: blog-site
+          fetch-depth: 1
+
+      - name: 校验待部署文件
+        run: |
+          set -euo pipefail
+          test -f blog-site/docs/index.html
+          test -f blog-site/docs/post/5.html
+          test -f blog-site/docs/assets/skill-report.css
+          echo "文件数：$(find blog-site/docs -type f | wc -l)"
+
+      - name: 直传到 Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy blog-site/docs --project-name=agent-skills-daily-report --branch=blog
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 写入脱敏结果
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          mkdir -p audit
+          {
+            echo "# Cloudflare Pages 直传烟雾测试"
+            echo
+            echo "- **状态：** 成功"
+            echo "- **时间：** $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            echo "- **部署地址：** \`${DEPLOYMENT_URL}\`"
+            echo "- **来源分支：** \`blog\`"
+            echo "- **项目：** \`agent-skills-daily-report\`"
+          } > audit/cloudflare-deploy-smoke.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audit/cloudflare-deploy-smoke.md
+          git commit -m "test: record Cloudflare Pages deployment [skip ci]"
+          git push origin HEAD:agent/cloudflare-deploy-smoke
