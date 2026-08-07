@@ -1,0 +1,20 @@
+name: 最终生产重建触发器
+
+on:
+  push:
+    branches: ["agent/final-rebuild-trigger"]
+    paths:
+      - ".github/workflows/final_rebuild_trigger.yml"
+
+permissions:
+  actions: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: 触发正式 Gmeek 构建
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run Gmeek.yml --ref main
