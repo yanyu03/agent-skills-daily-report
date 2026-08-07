@@ -1,2 +1,6 @@
 /*
-  Cache-Control: public, max-age=60, s-maxage=300
+  Cache-Control: public, no-cache, must-revalidate
+
+/assets/*
+  ! Cache-Control
+  Cache-Control: public, max-age=60, must-revalidate
