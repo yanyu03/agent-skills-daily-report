@@ -1,9 +1,6 @@
 name: 部署到 Cloudflare Pages
 
 on:
-  workflow_run:
-    workflows: ["构建并部署 Gmeek 中文博客"]
-    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -21,7 +18,6 @@ env:
 jobs:
   deploy:
     name: 从 blog 分支发布静态站点
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
 
     steps:
