@@ -1,0 +1,71 @@
+name: Cloudflare 缓存只读审计
+
+on:
+  push:
+    branches: ["agent/cloudflare-cache-audit"]
+    paths:
+      - ".github/workflows/cloudflare_cache_audit.yml"
+      - "scripts/cloudflare_cache_audit.py"
+      - "audit-trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cloudflare-cache-audit
+  cancel-in-progress: true
+
+env:
+  CF_PAGES_PROJECT: agent-skills-daily-report
+  CF_CUSTOM_DOMAIN: skill.250221.xyz
+  CF_ZONE_NAME: 250221.xyz
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: 检出审计分支
+        uses: actions/checkout@v6
+        with:
+          ref: agent/cloudflare-cache-audit
+          fetch-depth: 0
+
+      - name: 检出 blog 静态产物
+        uses: actions/checkout@v6
+        with:
+          ref: blog
+          path: blog-site
+          fetch-depth: 1
+
+      - name: 检查 Cloudflare 凭据
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID}"
+
+      - name: 读取 Pages、Zone、缓存规则与响应头
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BLOG_ROOT: blog-site/docs
+          REPORT_PATH: audit/cloudflare-cache-report.md
+        run: python scripts/cloudflare_cache_audit.py
+
+      - name: 提交脱敏审计报告
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audit/cloudflare-cache-report.md
+          if git diff --cached --quiet; then
+            echo "审计结果没有变化。"
+          else
+            git commit -m "audit: refresh Cloudflare cache report [skip ci]"
+            git push origin HEAD:agent/cloudflare-cache-audit
+          fi
