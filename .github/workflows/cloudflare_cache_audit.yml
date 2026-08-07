@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
+  actions: read
   contents: write
 
 concurrency:
@@ -36,11 +36,6 @@ jobs:
         with:
           ref: agent/cloudflare-cache-audit
           fetch-depth: 0
-
-      - name: 触发一次正式 Gmeek 重建
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run Gmeek.yml --ref main
 
       - name: 检出 blog 静态产物
         uses: actions/checkout@v6
