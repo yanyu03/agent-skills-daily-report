@@ -7,5 +7,5 @@
 | 文件 | 本地 SHA | 唯一部署匹配 | 生产别名匹配 | 唯一部署缓存 | 生产别名缓存 |
 | --- | --- | --- | --- | --- | --- |
 | `/index.html` | `8836cd1fda29` | **是** | **是** | `CF=- / Age=- / public, no-cache, must-revalidate` | `CF=- / Age=- / public, no-cache, must-revalidate` |
-| `/post/5.html` | `44073150fb17` | **是** | **是** | `CF=- / Age=- / public, no-cache, must-revalidate` | `CF=- / Age=- / public, max-age=60, s-maxage=300` |
+| `/post/5.html` | `44073150fb17` | **是** | **是** | `CF=- / Age=- / public, no-cache, must-revalidate` | `CF=- / Age=- / public, no-cache, must-revalidate` |
 | `/assets/skill-report.css` | `33c75f0bebc2` | **是** | **是** | `CF=- / Age=- / public, max-age=60, must-revalidate` | `CF=- / Age=- / public, max-age=60, must-revalidate` |
