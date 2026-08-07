@@ -1,0 +1,59 @@
+name: 最终移动端配置校验
+
+on:
+  push:
+    branches: ["agent/final-mobile-smoke"]
+    paths:
+      - ".github/workflows/final_mobile_smoke.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: 检出测试分支
+        uses: actions/checkout@v6
+
+      - name: 检出最终样式配置
+        uses: actions/checkout@v6
+        with:
+          ref: agent/final-mobile-layout
+          path: mobile-layout
+
+      - name: 校验域名和移动端规则
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          config_path = Path('mobile-layout/config.json')
+          config = json.loads(config_path.read_text(encoding='utf-8'))
+          raw = config_path.read_text(encoding='utf-8')
+
+          assert config['homeUrl'] == 'https://report.takaosakuma.dpdns.org/'
+          assert '250221.xyz' not in raw
+          assert '@media(max-width:700px)' in config['indexStyle']
+          assert '@media(max-width:700px)' in config['style']
+          assert '@media(max-width:380px)' in config['style']
+          assert 'width:44px' in config['indexStyle']
+          assert 'min-height:48px' in config['style']
+          assert 'grid-template-columns:repeat(2,minmax(0,1fr))' in config['style']
+          assert 'width:calc(100% + 26px)' in config['style']
+
+          report = '''# 最终移动端配置校验\n\n- JSON：通过\n- 旧域名：已移除\n- 新域名：`https://report.takaosakuma.dpdns.org/`\n- 700px 移动断点：通过\n- 380px 小屏断点：通过\n- 44px Header 触摸区：通过\n- 48px 折叠区触摸高度：通过\n- 双列指标卡与超小屏单列：通过\n- 移动端全宽横向表格：通过\n'''
+          Path('audit').mkdir(exist_ok=True)
+          Path('audit/final-mobile-smoke.md').write_text(report, encoding='utf-8')
+          PY
+
+      - name: 提交校验报告
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audit/final-mobile-smoke.md
+          git commit -m "test: record final mobile validation [skip ci]"
+          git push origin HEAD:agent/final-mobile-smoke
