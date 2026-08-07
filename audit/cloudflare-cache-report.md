@@ -1,6 +1,6 @@
 # Cloudflare Pages 缓存审计
 
-- **生成时间：** 2026-08-07 00:39:48 UTC
+- **生成时间：** 2026-08-07 00:42:00 UTC
 - **Pages 项目：** `agent-skills-daily-report`
 - **自定义域名：** `skill.250221.xyz`
 - **Zone：** `250221.xyz`
@@ -12,10 +12,10 @@
 - **生产分支：** `blog`
 - **pages.dev：** `https://agent-skills-daily-report-2ep.pages.dev`
 - **绑定域名：** `agent-skills-daily-report-2ep.pages.dev`, `report.takaosakuma.dpdns.org`
-- **最近部署 ID：** `0996cc7f-3090-485b-ad2b-a886e96254a4`
+- **最近部署 ID：** `d94a3eaa-09c3-4035-9534-0515534eb32f`
 - **最近部署环境：** `production`
-- **最近部署时间：** `2026-08-06T00:47:58.706915Z`
-- **最近部署地址：** `https://0996cc7f.agent-skills-daily-report-2ep.pages.dev`
+- **最近部署时间：** `2026-08-07T00:41:33.457127Z`
+- **最近部署地址：** `https://d94a3eaa.agent-skills-daily-report-2ep.pages.dev`
 
 ## Zone 与缓存设置
 
@@ -27,7 +27,7 @@
 
 | 文件 | 本地 | pages.dev | 自定义域名 | 自定义域名（绕缓存） |
 | --- | --- | --- | --- | --- |
-| `/index.html` | `8836cd1fda29` / 11217 B | HTTP 200<br>匹配本地：**否** | HTTP 0<br>匹配本地：**否** | HTTP 0<br>匹配本地：**否** |
+| `/index.html` | `8836cd1fda29` / 11217 B | HTTP 200<br>匹配本地：**是** | HTTP 0<br>匹配本地：**否** | HTTP 0<br>匹配本地：**否** |
 | `/post/5.html` | `44073150fb17` / 49439 B | HTTP 200<br>匹配本地：**否** | HTTP 0<br>匹配本地：**否** | HTTP 0<br>匹配本地：**否** |
 | `/assets/skill-report.css` | `33c75f0bebc2` / 42174 B | HTTP 200<br>匹配本地：**否** | HTTP 0<br>匹配本地：**否** | HTTP 0<br>匹配本地：**否** |
 
