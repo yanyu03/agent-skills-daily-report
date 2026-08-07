@@ -1,9 +1,12 @@
 name: 构建并部署 Gmeek 中文博客
 
 on:
+  push:
+    branches:
+      - agent/tailwind-smoke-test
+    paths:
+      - .github/workflows/Gmeek.yml
   workflow_dispatch:
-  issues:
-    types: [opened, edited, closed, reopened, labeled, unlabeled]
 
 concurrency:
   group: gmeek-blog-output
@@ -11,19 +14,18 @@ concurrency:
 
 jobs:
   build:
-    name: 从 py 构建并写入 blog
+    name: 从样式分支构建并写入 blog
     runs-on: ubuntu-24.04
     timeout-minutes: 35
-    if: ${{ github.event_name != 'issues' || github.event.issue.user.id == github.event.repository.owner.id }}
     permissions:
       contents: write
       issues: write
 
     steps:
-      - name: 检出 Python 源码分支
+      - name: 检出 Tailwind 样式分支
         uses: actions/checkout@v6
         with:
-          ref: py
+          ref: agent/tailwind-article-style
           fetch-depth: 0
 
       - name: 检出博客产物分支
@@ -73,7 +75,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # py 分支提供源码和配置；blog 分支提供上一次构建缓存。
           rsync -a \
             --exclude='.git' \
             --exclude='.github' \
@@ -89,23 +90,10 @@ jobs:
           npm install --ignore-scripts --no-audit --no-fund
 
           current_config_hash=$(sha256sum config.json | awk '{print $1}')
-          cached_config_hash=$(cat .gmeek-config.sha256 2>/dev/null || true)
-
-          if [ "${current_config_hash}" != "${cached_config_hash}" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Gmeek 配置发生变化，执行全量重建。"
-            rm -f blogBase.json
-          else
-            echo "Gmeek 配置未变化，执行增量构建。"
-          fi
-
           echo "${current_config_hash}" > .gmeek-config.sha256
-          issue_number="${{ github.event.issue.number }}"
-          if [ -n "${issue_number}" ]; then
-            python Gmeek.py "${{ secrets.GITHUB_TOKEN }}" "${{ github.repository }}" --issue_number "${issue_number}"
-          else
-            python Gmeek.py "${{ secrets.GITHUB_TOKEN }}" "${{ github.repository }}"
-          fi
+          rm -f blogBase.json
 
+          python Gmeek.py "${{ secrets.GITHUB_TOKEN }}" "${{ github.repository }}"
           python scripts/enhance_blog_html.py docs
           mkdir -p docs/assets
           npm run build:css
@@ -118,7 +106,6 @@ jobs:
             cp _headers docs/_headers
           fi
 
-          # blog 分支只保留构建产物，不混入 Python、Node 或 Tailwind 源码。
           find "${{ github.workspace }}/blog-site" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           cp -a docs "${{ github.workspace }}/blog-site/docs"
           cp -a backup "${{ github.workspace }}/blog-site/backup"
@@ -139,7 +126,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "站点内容没有变化，无需提交。"
           else
-            git commit -m "chore: 更新 Gmeek 中文站点 [skip ci]"
+            git commit -m "style: 发布 Tailwind 中文站点预览 [skip ci]"
             git pull --rebase --autostash origin blog
             git push origin HEAD:blog
           fi
