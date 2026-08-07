@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 35
     if: ${{ github.event_name != 'issues' || github.event.issue.user.id == github.event.repository.owner.id }}
     permissions:
+      actions: write
       contents: write
       issues: write
 
@@ -128,6 +129,7 @@ jobs:
           touch "${{ github.workspace }}/blog-site/.nojekyll"
 
       - name: 提交生成结果到 blog 分支
+        id: publish_blog
         working-directory: blog-site
         run: |
           set -euo pipefail
@@ -138,11 +140,19 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "站点内容没有变化，无需提交。"
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
           else
             git commit -m "chore: 更新 Gmeek 中文站点 [skip ci]"
             git pull --rebase --autostash origin blog
             git push origin HEAD:blog
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
           fi
+
+      - name: 触发 Cloudflare Pages 部署
+        if: ${{ steps.publish_blog.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run cloudflare_pages.yml --ref main
 
       - name: 上传 GitHub Pages 构建产物
         uses: actions/upload-pages-artifact@v4
