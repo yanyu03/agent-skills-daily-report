@@ -7,6 +7,7 @@ on:
       - ".github/workflows/cloudflare_cache_audit.yml"
       - "scripts/cloudflare_cache_audit.py"
       - "scripts/cloudflare_account_audit_extra.py"
+      - "scripts/github_gmeek_runs_audit.py"
       - "audit-trigger.txt"
   workflow_dispatch:
 
@@ -67,12 +68,21 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python scripts/cloudflare_account_audit_extra.py
 
+      - name: 读取 Gmeek 上游工作流
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/github_gmeek_runs_audit.py
+
       - name: 提交脱敏审计报告
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add audit/cloudflare-cache-report.md audit/cloudflare-account-extra.md
+          git add \
+            audit/cloudflare-cache-report.md \
+            audit/cloudflare-account-extra.md \
+            audit/gmeek-workflow-runs.md
           if git diff --cached --quiet; then
             echo "审计结果没有变化。"
           else
