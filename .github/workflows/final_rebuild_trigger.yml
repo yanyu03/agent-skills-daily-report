@@ -8,13 +8,31 @@ on:
 
 permissions:
   actions: write
+  contents: write
 
 jobs:
   dispatch:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      - name: 检出触发分支
+        uses: actions/checkout@v6
+
       - name: 触发正式 Gmeek 构建
+        id: dispatch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run Gmeek.yml --ref main
+        run: |
+          set -euo pipefail
+          gh workflow run Gmeek.yml --ref main
+          mkdir -p audit
+          printf '# 最终生产重建触发结果\n\n- 状态：GitHub API 已接受 Gmeek workflow_dispatch\n- 目标：`Gmeek.yml@main`\n' > audit/final-rebuild-dispatch.md
+
+      - name: 写回触发结果
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audit/final-rebuild-dispatch.md
+          git commit -m "test: record final rebuild dispatch [skip ci]"
+          git push origin HEAD:agent/final-rebuild-trigger
