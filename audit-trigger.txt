@@ -1,1 +1,1 @@
-Confirm production alias convergence at 2026-08-07T09:14+08:00
+Verify normalized URL production deployment at 2026-08-07T09:18+08:00
