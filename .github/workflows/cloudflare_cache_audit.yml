@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
+  actions: read
   contents: write
 
 concurrency:
@@ -31,11 +31,6 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: 触发最终正式重建
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run Gmeek.yml --ref main
-
       - name: 检出审计分支
         uses: actions/checkout@v6
         with:
