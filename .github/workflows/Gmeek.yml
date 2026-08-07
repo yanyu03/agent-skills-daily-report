@@ -13,7 +13,7 @@ jobs:
   build:
     name: 从 py 构建并写入 blog
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     if: ${{ github.event_name != 'issues' || github.event.issue.user.id == github.event.repository.owner.id }}
     permissions:
       contents: write
@@ -38,9 +38,18 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: 校验 Gmeek 配置
+      - name: 配置 Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: 校验站点与样式配置
         run: |
           python -m json.tool config.json > /dev/null
+          python -m json.tool package.json > /dev/null
+          python -m py_compile scripts/enhance_blog_html.py
+          test -s assets/skill-report.css
           cat config.json
 
       - name: 获取 Gmeek 源码
@@ -60,18 +69,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r /opt/Gmeek/requirements.txt
 
-      - name: 生成静态站点
+      - name: 生成并增强静态站点
         run: |
           set -euo pipefail
 
           # py 分支提供源码和配置；blog 分支提供上一次构建缓存。
-          rsync -a --exclude='.git' --exclude='.github' --exclude='blog-site' ./ /opt/Gmeek/
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='blog-site' \
+            --exclude='node_modules' \
+            ./ /opt/Gmeek/
           [ ! -d blog-site/docs ] || cp -a blog-site/docs /opt/Gmeek/docs
           [ ! -d blog-site/backup ] || cp -a blog-site/backup /opt/Gmeek/backup
           [ ! -f blog-site/blogBase.json ] || cp blog-site/blogBase.json /opt/Gmeek/blogBase.json
           [ ! -f blog-site/.gmeek-config.sha256 ] || cp blog-site/.gmeek-config.sha256 /opt/Gmeek/.gmeek-config.sha256
 
           cd /opt/Gmeek
+          npm install --ignore-scripts --no-audit --no-fund
+
           current_config_hash=$(sha256sum config.json | awk '{print $1}')
           cached_config_hash=$(cat .gmeek-config.sha256 2>/dev/null || true)
 
@@ -90,11 +106,19 @@ jobs:
             python Gmeek.py "${{ secrets.GITHUB_TOKEN }}" "${{ github.repository }}"
           fi
 
+          python scripts/enhance_blog_html.py docs
+          mkdir -p docs/assets
+          npm run build:css
+
+          test -s docs/assets/skill-report.css
+          grep -q 'skill-post-list' docs/index.html
+          grep -R -q 'skill-report' docs/post
+
           if [ -f _headers ]; then
             cp _headers docs/_headers
           fi
 
-          # blog 分支只保留构建产物，不混入 Python 源码。
+          # blog 分支只保留构建产物，不混入 Python、Node 或 Tailwind 源码。
           find "${{ github.workspace }}/blog-site" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
           cp -a docs "${{ github.workspace }}/blog-site/docs"
           cp -a backup "${{ github.workspace }}/blog-site/backup"
