@@ -1,0 +1,22 @@
+name: 触发正式博客重建
+
+on:
+  push:
+    branches: ["agent/production-rebuild-trigger"]
+    paths:
+      - ".github/workflows/trigger_production_rebuild.yml"
+      - "rebuild-trigger.txt"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: 触发 main 上的 Gmeek
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run Gmeek.yml --ref main
